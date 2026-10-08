@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>读写障碍学习智能体 · 优化版</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+            font-size: 18px;
+            line-height: 1.8;
+            padding: 16px;
+            background-color: #fff9e8;
+            color: #382b1f;
+            transition: background-color 0.3s, color 0.3s;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* ===== 三套护眼主题 ===== */
+        body.theme-white { background-color: #ffffff; color: #111111; }
+        body.theme-cream { background-color: #fff9e8; color: #382b1f; }
+        body.theme-dark  { background-color: #2c2c2c; color: #eeeeee; }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        /* ===== 标题区 ===== */
+        .main-title { font-size: 26px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .disclaimer { font-size: 13px; color: #887766; margin: 4px 0 16px 2px; }
+        body.theme-dark .disclaimer { color: #aaa; }
+
+        /* ===== 分类导航（Tab） ===== */
+        .tab-nav {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            background: rgba(130,130,130,0.1);
+            padding: 8px;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 72px;
+            padding: 10px 8px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            font-size: 15px;
+            cursor: pointer;
+            color: inherit;
+            white-space: nowrap;
+        }
+        .tab-btn.active {
+            background: #4a86c0;
+            color: #fff;
+            font-weight: bold;
+        }
+        body.theme-dark .tab-btn.active { background: #335580; }
+        .tab-page { display: none; }
+        .tab-page.active { display: block; }
+
+        /* ===== 控制条 ===== */
+        .control-bar {
+            background: rgba(130,130,130,0.1);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.4);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        body.theme-dark .control-group { background: rgba(60,60,60,0.5); }
+        select, input[type="text"], textarea {
+            padding: 8px;
+            font-size: 15px;
+            border-radius: 6px;
+            border: 1px solid #999;
+            background: #fff;
+            color: #333;
+            min-height: 38px;
+        }
+        textarea { resize: vertical; }
+        body.theme-dark select, body.theme-dark input[type="text"] {
+            background: #444; color: #fff; border-color: #777;
+        }
+
+        button {
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 1px solid #999;
+            background: #f4f4f4;
+            cursor: pointer;
+            font-size: 15px;
+            min-height: 40px;
+            color: inherit;
+        }
+        body.theme-dark button { background: #444; color: #fff; border-color: #777; }
+        button.primary { background: #4a86c0; color: #fff; border-color: #3a76b0; }
+        button.danger { background: #dd5555; color: #fff; border-color: #bb3333; }
+
+        /* ===== 通用卡片 ===== */
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.55);
+            margin-bottom: 20px;
+        }
+        body.theme-dark .card { background: rgba(60,60,60,0.55); }
+
+        /* ===== 课文选择 ===== */
+        .lesson-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .lesson-btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #999;
+            background: #f4f4f4;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .lesson-btn.active { background: #4a86c0; color: #fff; border-color: #3a76b0; }
+        .lesson-btn.custom { border-style: dashed; border-color: #c9a227; color: #8a6d1a; }
+        body.theme-dark .lesson-btn.custom { color: #e8c95a; border-color: #c9a227; }
+        .lesson-btn.custom.active { background: #c9a227; color: #fff; border-color: #a88620; }
+
+        /* ===== 阅读区 ===== */
+        .reading-area { padding: 24px; border-radius: 10px; background: rgba(255,255,255,0.55); margin-bottom: 20px; }
+        body.theme-dark .reading-area { background: rgba(60,60,60,0.55); }
+        .sentence-item { padding: 6px 4px; margin: 4px 0; cursor: pointer; border-radius: 4px; }
+        .sentence-item:hover { background: rgba(120,160,220,0.2); }
+        .sentence-item.active-read { background: #b8d8ff; }
+        body.theme-dark .sentence-item.active-read { background: #335580; }
+        /* 重度模式：单句放大卡 */
+        .reading-mode-heavy .sentence-item {
+            font-size: 1.4em;
+            line-height: 2.0;
+            margin: 10px 0;
+            padding: 12px 10px;
+            border-bottom: 1px dashed rgba(130,130,130,0.3);
+        }
+
+        /* ===== 练习区 ===== */
+        .quiz-area { padding: 20px; border-radius: 10px; background: rgba(255,255,255,0.55); margin-bottom: 20px; }
+        body.theme-dark .quiz-area { background: rgba(60,60,60,0.55); }
+        .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .accuracy { font-weight: bold; color: #2266aa; }
+        body.theme-dark .accuracy { color: #88bbff; }
+        .quiz-type { font-size: 15px; color: #666; margin-bottom: 8px; }
+        body.theme-dark .quiz-type { color: #aaa; }
+        .option-btn { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 12px 14px; }
+        .fill-blank { padding: 10px; font-size: 18px; width: 160px; border-radius: 6px; border: 1px solid #999; }
+        .order-item { padding: 10px 12px; margin: 4px 0; background: rgba(120,160,220,0.15); border-radius: 6px; cursor: pointer; min-height: 44px; }
+        .order-item.selected { background: #b8d8ff; }
+        .hint-box { margin-top: 10px; padding: 10px 12px; background: rgba(255,200,80,0.2); border-radius: 8px; font-size: 15px; }
+
+        /* ===== 学习记录 ===== */
+        .stat-card { padding: 16px; border-radius: 10px; background: rgba(140,200,140,0.15); }
+        body.theme-dark .stat-card { background: rgba(80,130,80,0.25); }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed rgba(130,130,130,0.3); }
+
+        /* ===== AI 答疑 ===== */
+        .ai-chat-box {
+            height: 320px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: rgba(255,255,255,0.7);
+        }
+        body.theme-dark .ai-chat-box { background: rgba(50,50,50,0.7); border-color: #555; }
+        .chat-msg { margin: 8px 0; padding: 10px 12px; border-radius: 10px; max-width: 90%; font-size: 16px; line-height: 1.7; }
+        .chat-msg.user { background: #cfe3f5; margin-left: auto; }
+        .chat-msg.ai { background: #efe8d8; }
+        body.theme-dark .chat-msg.user { background: #2b4a6b; color: #fff; }
+        body.theme-dark .chat-msg.ai { background: #4a4438; color: #eee; }
+        .chat-msg.ai-loading { color: #888; font-style: italic; }
+        .ai-input-row { display: flex; gap: 8px; }
+        .ai-input-row input { flex: 1; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #999; }
+        .ai-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .ai-quick button { font-size: 13px; padding: 6px 10px; }
+
+        /* ===== 设置面板 ===== */
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .setting-item { padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.4); }
+        body.theme-dark .setting-item { background: rgba(60,60,60,0.4); }
+        .setting-item label { font-size: 14px; display: block; margin-bottom: 6px; font-weight: bold; }
+        .difficulty-desc { font-size: 13px; color: #887766; margin-top: 4px; }
+        body.theme-dark .difficulty-desc { color: #aaa; }
+
+        /* ===== 阅读标尺 ===== */
+        .ruler-line { position: fixed; left: 0; width: 100%; height: 42px; background: rgba(255,220,0,0.25); pointer-events: none; display: none; z-index: 100; }
+        .ruler-line.show { display: block; }
+
+        /* ===== 字词弹窗 ===== */
+        .word-popup { position: absolute; padding: 12px; border-radius: 8px; background: #fff; box-shadow: 0 2px 12px #00000033; max-width: 260px; z-index: 200; display: none; }
+        body.theme-dark .word-popup { background: #444; }
+        .word-popup.show { display: block; }
+
+        /* ===== 极简模式 ===== */
+        body.simple-mode .tab-nav,
+        body.simple-mode .control-bar,
+        body.simple-mode .quiz-area,
+        body.simple-mode .stat-card,
+        body.simple-mode .ai-chat-box,
+        body.simple-mode .ai-input-row,
+        body.simple-mode .ai-quick { display: none; }
+
+        /* ===== 移动端适配 ===== */
+        @media (max-width: 768px) {
+            body { padding: 10px; font-size: 17px; }
+            .main-title { font-size: 22px; }
+            .control-bar { padding: 8px; gap: 6px; }
+            .control-group { padding: 4px 8px; font-size: 13px; }
+            .settings-grid { grid-template-columns: 1fr; }
+            .card, .reading-area, .quiz-area { padding: 14px; }
+            button { padding: 10px 12px; font-size: 14px; min-height: 44px; }
+            .lesson-btn { flex: 1 1 calc(50% - 5px); text-align: center; }
+            .fill-blank { width: 100%; }
+        }
+    </style>
+</head>
+<body class="theme-cream">
+    <div class="ruler-line" id="ruler"></div>
+    <div class="word-popup" id="wordPopup"></div>
+
+    <div class="container">
+        <!-- 标题 -->
+        <div class="main-title">📚 读写障碍学习智能体</div>
+        <div class="disclaimer">本智能体只作辅助学习工具，无法提供医疗保障</div>
+
+        <!-- 分类导航 -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="reading" onclick="switchTab('reading')">📖 阅读</button>
+            <button class="tab-btn" data-tab="quiz" onclick="switchTab('quiz')">✏️ 练习</button>
+            <button class="tab-btn" data-tab="ai" onclick="switchTab('ai')">🤖 AI答疑</button>
+            <button class="tab-btn" data-tab="record" onclick="switchTab('record')">📊 记录</button>
+            <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 设置</button>
+        </div>
+
+        <!-- ========== 阅读页 ========== -->
+        <div class="tab-page active" id="tab-reading">
+            <div class="control-bar">
+                <button onclick="setTheme('theme-white')">白底</button>
+                <button onclick="setTheme('theme-cream')">米黄</button>
+                <button onclick="setTheme('theme-dark')">暗色</button>
+                <button onclick="fontSizeChange(+1)">字号+</button>
+                <button onclick="fontSizeChange(-1)">字号-</button>
+                <button onclick="toggleRuler()">阅读标尺</button>
+                <button onclick="toggleSimple()">极简阅读</button>
+                <button onclick="speedUp()">语速+</button>
+                <button onclick="speedDown()">语速-</button>
+                <button onclick="readAll()">🔊 朗读全文</button>
+            </div>
+
+            <div class="card">
+                <div class="lesson-picker" id="lessonPicker"></div>
+                <button onclick="toggleAddLesson()" class="primary" style="margin-top:8px;">➕ 添加课文</button>
+                <div id="addLessonBox" style="display:none; margin-top:12px; padding-top:12px; border-top:1px dashed rgba(130,130,130,0.4);">
+                    <div class="setting-item" style="margin-bottom:8px;">
+                        <label>学段</label>
+                        <select id="addStage">
+                            <option value="小学">小学</option>
+                            <option value="初中" selected>初中</option>
+                            <option value="高中">高中</option>
+                        </select>
+                    </div>
+                    <div class="setting-item" style="margin-bottom:8px;">
+                        <label>课文标题</label>
+                        <input type="text" id="addTitle" placeholder="例如：咏鹅 · 骆宾王">
+                    </div>
+                    <div class="setting-item" style="margin-bottom:8px;">
+                        <label>课文正文（整段粘贴即可，系统自动分句并生成基础题目）</label>
+                        <textarea id="addContent" style="width:100%; height:160px; padding:10px; font-size:16px; border-radius:8px; border:1px solid #999;" placeholder="粘贴课文内容..."></textarea>
+                    </div>
+                    <button class="primary" onclick="addCustomLesson()">保存课文</button>
+                    <span id="addLessonStatus" style="font-size:14px; color:#887766; margin-left:8px;"></span>
+                </div>
+            </div>
+
+            <div class="reading-area" id="readingArea">
+                <h3 id="articleTitle">课文：春（朱自清）</h3>
+                <div id="textContainer"></div>
+            </div>
+        </div>
+
+        <!-- ========== 练习页 ========== -->
+        <div class="tab-page" id="tab-quiz">
+            <div class="quiz-area">
+                <div class="quiz-header">
+                    <h3>随堂练习</h3>
+                    <div class="accuracy">当前正确率：<span id="currentAcc">0%</span></div>
+                </div>
+                <div class="quiz-type" id="quizType"></div>
+                <div id="quizBox"></div>
+                <div id="quizFeedback" style="margin-top:12px; font-weight:bold; min-height:24px;"></div>
+                <button onclick="nextQuestion()" style="margin-top:12px;">下一题 →</button>
+            </div>
+        </div>
+
+        <!-- ========== AI 答疑页 ========== -->
+        <div class="tab-page" id="tab-ai">
+            <div class="card">
+                <h3 style="margin-bottom:10px;">🤖 AI 答疑助手</h3>
+                <p style="font-size:14px; color:#887766; margin-bottom:10px;">针对当前课文提问，AI 用简单易懂的话回答你。首次使用请先到「设置」里配置你的 AI 接口（支持 OpenAI 兼容格式）。未配置时使用内置离线答疑。</p>
+                <div class="ai-quick">
+                    <button onclick="askAI('请用最简单的语言解释一下这篇课文讲了什么？')">🗣 课文讲什么</button>
+                    <button onclick="askAI('这句话是什么意思？请帮我解释。')">❓ 句子意思</button>
+                    <button onclick="askAI('请把这篇课文里难懂的字词都挑出来，用简单的话解释。')">🔍 字词解释</button>
+                    <button onclick="askAI('请出 3 道简单的题来考考我。')">📝 出题考我</button>
+                </div>
+                <div class="ai-chat-box" id="aiChatBox"></div>
+                <div class="ai-input-row">
+                    <input type="text" id="aiInput" placeholder="输入你的问题，例如：这句话什么意思？" onkeydown="if(event.key==='Enter')sendAI()">
+                    <button class="primary" onclick="sendAI()">发送</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 记录页 ========== -->
+        <div class="tab-page" id="tab-record">
+            <div class="card">
+                <h3 style="margin-bottom:12px;">📊 学习记录</h3>
+                <div class="stat-card">
+                    <div class="stat-row"><span>累计答题</span><span id="statTotal">0 道</span></div>
+                    <div class="stat-row"><span>答对题数</span><span id="statCorrect">0 道</span></div>
+                    <div class="stat-row"><span>累计正确率</span><span id="statRate">0%</span></div>
+                    <div class="stat-row"><span>当前阅读难度</span><span id="statReadLevel">轻度</span></div>
+                    <div class="stat-row"><span>当前答题难度</span><span id="statQuizLevel">简单</span></div>
+                </div>
+                <button onclick="resetStudy()" class="danger" style="margin-top:12px;">重置学习记录</button>
+            </div>
+        </div>
+
+        <!-- ========== 设置页 ========== -->
+        <div class="tab-page" id="tab-settings">
+            <div class="card">
+                <h3 style="margin-bottom:14px;">⚙️ 设置</h3>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>读写困难程度（覆盖多程度）</label>
+                        <select id="diffLevel" onchange="applyDifficulty()">
+                            <option value="light">轻度困难</option>
+                            <option value="middle" selected>中度困难</option>
+                            <option value="heavy">重度困难</option>
+                        </select>
+                        <div class="difficulty-desc" id="diffDesc">中度：自动拆分短句、放大字号、答题提供提示</div>
+                    </div>
+                    <div class="setting-item">
+                        <label>阅读难度（可单独微调）</label>
+                        <select id="readLevel" onchange="applyReadLevel()">
+                            <option value="light">轻度 · 标准排版</option>
+                            <option value="middle" selected>中度 · 拆短句+放大</option>
+                            <option value="heavy">重度 · 单句大字+标尺</option>
+                        </select>
+                        <div class="difficulty-desc">重度模式自动开启阅读标尺，逐句放大显示</div>
+                    </div>
+                    <div class="setting-item">
+                        <label>答题难度（可单独微调）</label>
+                        <select id="quizLevel" onchange="applyQuizLevel()">
+                            <option value="easy" selected>简单 · 少选项+提示</option>
+                            <option value="middle">中等 · 更多选项</option>
+                            <option value="hard">困难 · 无提示填空</option>
+                        </select>
+                        <div class="difficulty-desc">简单：3选项+答错给提示；困难：开放填空无提示</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:14px;">🤖 AI 接口配置（自行接入 API）</h3>
+                <p style="font-size:13px; color:#887766; margin-bottom:10px;">支持任何 OpenAI 兼容接口（如 DeepSeek、通义千问、智谱、本地 Ollama 等）。填写后密钥只保存在本机浏览器，不上传任何服务器。</p>
+                <div class="setting-item" style="margin-bottom:10px;">
+                    <label>接口地址 Base URL</label>
+                    <input type="text" id="aiBaseUrl" placeholder="例如：https://api.deepseek.com/v1">
+                </div>
+                <div class="setting-item" style="margin-bottom:10px;">
+                    <label>API Key</label>
+                    <input type="text" id="aiApiKey" placeholder="粘贴你的 API Key">
+                </div>
+                <div class="setting-item" style="margin-bottom:10px;">
+                    <label>模型名称</label>
+                    <input type="text" id="aiModel" placeholder="例如：deepseek-chat / qwen-plus / gpt-4o-mini">
+                </div>
+                <button class="primary" onclick="saveAIConfig()">保存 AI 配置</button>
+                <button onclick="testAIConfig()" style="margin-left:8px;">测试连接</button>
+                <div id="aiConfigStatus" style="margin-top:10px; font-size:14px; color:#887766;"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ============================================================
+// 一、课文数据库（内置公版篇目，覆盖小学/初中/高中）
+// ============================================================
+const textbook = {
+    "小学": [
+        {
+            title: "静夜思 · 李白",
+            content: ["床前明月光，","疑是地上霜。","举头望明月，","低头思故乡。"],
+            quiz: [
+                { type:"choice", q:"诗人抬头看到了什么？", options:["太阳","明月","星星"], answer:1 },
+                { type:"fill", q:"疑是地上____。", answer:"霜" },
+                { type:"choice", q:"这首诗表达了什么感情？", options:["思念家乡","喜欢秋天","赞美雪景"], answer:0 }
+            ]
+        },
+        {
+            title: "春晓 · 孟浩然",
+            content: ["春眠不觉晓，","处处闻啼鸟。","夜来风雨声，","花落知多少。"],
+            quiz: [
+                { type:"choice", q:"这首诗写的是什么季节？", options:["春天","夏天","冬天"], answer:0 },
+                { type:"fill", q:"处处闻____鸟。", answer:"啼" },
+                { type:"choice", q:"“花落知多少”表达了什么心情？", options:["开心","惋惜花落","生气"], answer:1 }
+            ]
+        },
+        {
+            title: "咏鹅 · 骆宾王",
+            content: ["鹅，鹅，鹅，","曲项向天歌。","白毛浮绿水，","红掌拨清波。"],
+            quiz: [
+                { type:"choice", q:"鹅的什么毛是白色的？", options:["红掌","白毛","绿水"], answer:1 },
+                { type:"fill", q:"红掌拨清____。", answer:"波" },
+                { type:"choice", q:"这首诗写的是什么动物？", options:["鸭子","鹅","天鹅"], answer:1 }
+            ]
+        },
+        {
+            title: "悯农 · 其二 · 李绅",
+            content: ["锄禾日当午，","汗滴禾下土。","谁知盘中餐，","粒粒皆辛苦。"],
+            quiz: [
+                { type:"choice", q:"农民伯伯在什么时候锄地？", options:["早上","中午","晚上"], answer:1 },
+                { type:"fill", q:"粒粒皆辛____。", answer:"苦" },
+                { type:"choice", q:"这首诗告诉我们要怎样？", options:["珍惜粮食","多睡觉","少干活"], answer:0 }
+            ]
+        },
+        {
+            title: "登鹳雀楼 · 王之涣",
+            content: ["白日依山尽，","黄河入海流。","欲穷千里目，","更上一层楼。"],
+            quiz: [
+                { type:"choice", q:"诗人在哪里看风景？", options:["楼上","海边","山上"], answer:0 },
+                { type:"fill", q:"更上一层____。", answer:"楼" },
+                { type:"choice", q:"“欲穷千里目”告诉我们什么道理？", options:["要多看风景","站得高看得远","要多走路"], answer:1 }
+            ]
+        },
+        {
+            title: "望庐山瀑布 · 李白",
+            content: ["日照香炉生紫烟，","遥看瀑布挂前川。","飞流直下三千尺，","疑是银河落九天。"],
+            quiz: [
+                { type:"choice", q:"诗人看到的是什么瀑布？", options:["庐山瀑布","黄果树瀑布","大瀑布"], answer:0 },
+                { type:"fill", q:"疑是银河落九____。", answer:"天" },
+                { type:"choice", q:"瀑布像什么一样落下来？", options:["银河","彩虹","白云"], answer:0 }
+            ]
+        },
+        {
+            title: "江雪 · 柳宗元",
+            content: ["千山鸟飞绝，","万径人踪灭。","孤舟蓑笠翁，","独钓寒江雪。"],
+            quiz: [
+                { type:"choice", q:"诗里是什么季节？", options:["春天","夏天","冬天"], answer:2 },
+                { type:"fill", q:"独钓寒江____。", answer:"雪" },
+                { type:"choice", q:"老人在江上做什么？", options:["钓鱼","划船","游泳"], answer:0 }
+            ]
+        },
+        {
+            title: "山行 · 杜牧",
+            content: ["远上寒山石径斜，","白云生处有人家。","停车坐爱枫林晚，","霜叶红于二月花。"],
+            quiz: [
+                { type:"choice", q:"诗人喜欢什么颜色的叶子？", options:["红叶","绿叶","黄叶"], answer:0 },
+                { type:"fill", q:"霜叶红于二月____。", answer:"花" },
+                { type:"choice", q:"这首诗写的是什么季节？", options:["春天","秋天","冬天"], answer:1 }
+            ]
+        },
+        {
+            title: "回乡偶书 · 贺知章",
+            content: ["少小离家老大回，","乡音无改鬓毛衰。","儿童相见不相识，","笑问客从何处来。"],
+            quiz: [
+                { type:"choice", q:"诗人回到哪里？", options:["家乡","学校","城市"], answer:0 },
+                { type:"fill", q:"笑问客从何处____。", answer:"来" },
+                { type:"choice", q:"孩子们认识诗人吗？", options:["认识","不认识","认识一点"], answer:1 }
+            ]
+        },
+        {
+            title: "绝句 · 杜甫",
+            content: ["两个黄鹂鸣翠柳，","一行白鹭上青天。","窗含西岭千秋雪，","门泊东吴万里船。"],
+            quiz: [
+                { type:"choice", q:"什么鸟在翠柳上叫？", options:["黄鹂","白鹭","燕子"], answer:0 },
+                { type:"fill", q:"一行白鹭上青____。", answer:"天" },
+                { type:"choice", q:"门前停着什么？", options:["船","车","马"], answer:0 }
+            ]
+        }
+    ],
+    "初中": [
+        {
+            title: "春 · 朱自清",
+            content: [
+                "盼望着，盼望着，东风来了，春天的脚步近了。",
+                "一切都像刚睡醒的样子，欣欣然张开了眼。",
+                "山朗润起来了，水涨起来了，太阳的脸红起来了。",
+                "小草偷偷地从土里钻出来，嫩嫩的，绿绿的。",
+                "园子里，田野里，瞧去，一大片一大片满是的。",
+                "坐着，躺着，打两个滚，踢几脚球，赛几趟跑，捉几回迷藏。",
+                "风轻悄悄的，草软绵绵的。",
+                "桃树、杏树、梨树，你不让我，我不让你，都开满了花赶趟儿。",
+                "红的像火，粉的像霞，白的像雪。",
+                "花里带着甜味儿；闭了眼，树上仿佛已经满是桃儿、杏儿、梨儿。",
+                "花下成千成百的蜜蜂嗡嗡地闹着，大小的蝴蝶飞来飞去。",
+                "野花遍地是：杂样儿，有名字的，没名字的，散在草丛里，像眼睛，像星星，还眨呀眨的。"
+            ],
+            quiz: [
+                { type:"choice", q:"“朗润”在文中描写的是什么？", options:["河水","山体","太阳"], answer:1 },
+                { type:"fill", q:"花里带着____味儿。", answer:"甜" },
+                { type:"choice", q:"“赶趟儿”在文中的意思是？", options:["赶时间","花儿争相开放","赶路"], answer:1 }
+            ]
+        },
+        {
+            title: "论语 · 十二章（节选）",
+            content: [
+                "子曰：“学而时习之，不亦说乎？",
+                "有朋自远方来，不亦乐乎？",
+                "人不知而不愠，不亦君子乎？”",
+                "子曰：“温故而知新，可以为师矣。”",
+                "子曰：“学而不思则罔，思而不学则殆。”"
+            ],
+            quiz: [
+                { type:"choice", q:"“学而时习之”的下一句是？", options:["不亦说乎","不亦乐乎","不亦君子乎"], answer:0 },
+                { type:"fill", q:"温故而知____，可以为师矣。", answer:"新" },
+                { type:"choice", q:"“学而不思则罔”告诉我们什么？", options:["要努力学习","学思要结合","要多思考"], answer:1 }
+            ]
+        },
+        {
+            title: "陋室铭 · 刘禹锡",
+            content: [
+                "山不在高，有仙则名。",
+                "水不在深，有龙则灵。",
+                "斯是陋室，惟吾德馨。",
+                "苔痕上阶绿，草色入帘青。",
+                "谈笑有鸿儒，往来无白丁。",
+                "可以调素琴，阅金经。",
+                "无丝竹之乱耳，无案牍之劳形。"
+            ],
+            quiz: [
+                { type:"fill", q:"斯是陋室，惟吾____馨。", answer:"德" },
+                { type:"choice", q:"“鸿儒”指的是什么人？", options:["博学的人","做官的人","贫穷的人"], answer:0 },
+                { type:"choice", q:"作者认为陋室不陋的原因是什么？", options:["房子很大","自己品德高尚","环境好"], answer:1 }
+            ]
+        },
+        {
+            title: "爱莲说 · 周敦颐（节选）",
+            content: [
+                "水陆草木之花，可爱者甚蕃。",
+                "予独爱莲之出淤泥而不染，濯清涟而不妖，",
+                "中通外直，不蔓不枝，香远益清，亭亭净植，可远观而不可亵玩焉。"
+            ],
+            quiz: [
+                { type:"fill", q:"出淤泥而不____。", answer:"染" },
+                { type:"choice", q:"作者喜爱什么花？", options:["牡丹","莲花","菊花"], answer:1 },
+                { type:"choice", q:"“濯清涟而不妖”中“妖”的意思是？", options:["妖怪","艳丽","奇怪"], answer:1 }
+            ]
+        },
+        {
+            title: "岳阳楼记 · 范仲淹（节选）",
+            content: [
+                "庆历四年春，滕子京谪守巴陵郡。",
+                "越明年，政通人和，百废具兴。",
+                "乃重修岳阳楼，增其旧制，刻唐贤今人诗赋于其上。",
+                "予观夫巴陵胜状，在洞庭一湖。",
+                "衔远山，吞长江，浩浩汤汤，横无际涯。",
+                "先天下之忧而忧，后天下之乐而乐。"
+            ],
+            quiz: [
+                { type:"fill", q:"先天下之忧而____。", answer:"忧" },
+                { type:"choice", q:"岳阳楼在哪个湖边？", options:["太湖","洞庭湖","西湖"], answer:1 },
+                { type:"choice", q:"“政通人和”形容什么？", options:["政务通畅百姓和睦","天气很好","交通方便"], answer:0 }
+            ]
+        },
+        {
+            title: "天净沙 · 秋思 · 马致远",
+            content: [
+                "枯藤老树昏鸦，",
+                "小桥流水人家，",
+                "古道西风瘦马。",
+                "夕阳西下，",
+                "断肠人在天涯。"
+            ],
+            quiz: [
+                { type:"choice", q:"这首曲写的是什么季节？", options:["春天","秋天","夏天"], answer:1 },
+                { type:"fill", q:"断肠人在天____。", answer:"涯" },
+                { type:"choice", q:"“断肠人”指的是？", options:["生病的人","思念家乡的人","饥饿的人"], answer:1 }
+            ]
+        },
+        {
+            title: "次北固山下 · 王湾",
+            content: [
+                "客路青山外，行舟绿水前。",
+                "潮平两岸阔，风正一帆悬。",
+                "海日生残夜，江春入旧年。",
+                "乡书何处达？归雁洛阳边。"
+            ],
+            quiz: [
+                { type:"fill", q:"潮平两岸____。", answer:"阔" },
+                { type:"choice", q:"诗人想托什么给家乡送信？", options:["大雁","信鸽","燕子"], answer:0 },
+                { type:"choice", q:"这首诗表达了什么感情？", options:["思念家乡","热爱大海","喜欢旅行"], answer:0 }
+            ]
+        },
+        {
+            title: "观沧海 · 曹操",
+            content: [
+                "东临碣石，以观沧海。",
+                "水何澹澹，山岛竦峙。",
+                "树木丛生，百草丰茂。",
+                "秋风萧瑟，洪波涌起。",
+                "日月之行，若出其中；",
+                "星汉灿烂，若出其里。",
+                "幸甚至哉，歌以咏志。"
+            ],
+            quiz: [
+                { type:"choice", q:"诗人观看的是什么？", options:["大海","长江","黄河"], answer:0 },
+                { type:"fill", q:"东临碣石，以观沧____。", answer:"海" },
+                { type:"choice", q:"“日月之行，若出其中”用了什么手法？", options:["比喻夸张","反问","设问"], answer:0 }
+            ]
+        }
+    ],
+    "高中": [
+        {
+            title: "劝学 · 荀子（节选）",
+            content: [
+                "君子曰：学不可以已。",
+                "青，取之于蓝，而青于蓝；冰，水为之，而寒于水。",
+                "木直中绳，輮以为轮，其曲中规。",
+                "故木受绳则直，金就砺则利，",
+                "君子博学而日参省乎己，则知明而行无过矣。"
+            ],
+            quiz: [
+                { type:"fill", q:"君子曰：学不可以____。", answer:"已" },
+                { type:"choice", q:"“青，取之于蓝，而青于蓝”比喻什么？", options:["颜色好看","学习使人进步","蓝色很深"], answer:1 },
+                { type:"choice", q:"“金就砺则利”中“砺”指什么？", options:["金子","磨刀石","利剑"], answer:1 }
+            ]
+        },
+        {
+            title: "沁园春 · 长沙 · 毛泽东",
+            content: [
+                "独立寒秋，湘江北去，橘子洲头。",
+                "看万山红遍，层林尽染；漫江碧透，百舸争流。",
+                "鹰击长空，鱼翔浅底，万类霜天竞自由。",
+                "怅寥廓，问苍茫大地，谁主沉浮？",
+                "携来百侣曾游，忆往昔峥嵘岁月稠。",
+                "恰同学少年，风华正茂；书生意气，挥斥方遒。",
+                "指点江山，激扬文字，粪土当年万户侯。",
+                "曾记否，到中流击水，浪遏飞舟？"
+            ],
+            quiz: [
+                { type:"fill", q:"万山红遍，层林尽____。", answer:"染" },
+                { type:"choice", q:"词人站在哪里观景？", options:["岳阳楼","橘子洲头","黄鹤楼"], answer:1 },
+                { type:"choice", q:"“书生意气，挥斥方遒”体现什么？", options:["颓废迷茫","意气风发","穷困潦倒"], answer:1 }
+            ]
+        },
+        {
+            title: "赤壁赋 · 苏轼（节选）",
+            content: [
+                "壬戌之秋，七月既望，苏子与客泛舟游于赤壁之下。",
+                "清风徐来，水波不兴。",
+                "举酒属客，诵明月之诗，歌窈窕之章。",
+                "少焉，月出于东山之上，徘徊于斗牛之间。",
+                "白露横江，水光接天。",
+                "纵一苇之所如，凌万顷之茫然。"
+            ],
+            quiz: [
+                { type:"fill", q:"清风徐来，水波不____。", answer:"兴" },
+                { type:"choice", q:"作者和客人在哪里游玩？", options:["西湖","赤壁之下","洞庭湖"], answer:1 },
+                { type:"choice", q:"“七月既望”指农历什么时候？", options:["七月初一","七月十五","七月十六"], answer:2 }
+            ]
+        },
+        {
+            title: "师说 · 韩愈（节选）",
+            content: [
+                "古之学者必有师。",
+                "师者，所以传道受业解惑也。",
+                "人非生而知之者，孰能无惑？",
+                "惑而不从师，其为惑也，终不解矣。",
+                "是故无贵无贱，无长无少，道之所存，师之所存也。"
+            ],
+            quiz: [
+                { type:"fill", q:"师者，所以传道受业解____也。", answer:"惑" },
+                { type:"choice", q:"“孰能无惑”的意思是？", options:["谁没有疑惑","谁没有老师","谁不学习"], answer:0 },
+                { type:"choice", q:"韩愈认为什么样的人可以做老师？", options:["年纪大的","有道的人","当官的"], answer:1 }
+            ]
+        },
+        {
+            title: "念奴娇 · 赤壁怀古 · 苏轼",
+            content: [
+                "大江东去，浪淘尽，千古风流人物。",
+                "故垒西边，人道是，三国周郎赤壁。",
+                "乱石穿空，惊涛拍岸，卷起千堆雪。",
+                "江山如画，一时多少豪杰。",
+                "遥想公瑾当年，小乔初嫁了，雄姿英发。",
+                "羽扇纶巾，谈笑间，樯橹灰飞烟灭。"
+            ],
+            quiz: [
+                { type:"fill", q:"大江东去，浪淘尽，千古风流人____。", answer:"物" },
+                { type:"choice", q:"“周郎”指的是谁？", options:["周瑜","诸葛亮","曹操"], answer:0 },
+                { type:"choice", q:"“樯橹灰飞烟灭”描写的是什么？", options:["大火","战船被烧毁","房屋倒塌"], answer:1 }
+            ]
+        },
+        {
+            title: "登高 · 杜甫",
+            content: [
+                "风急天高猿啸哀，渚清沙白鸟飞回。",
+                "无边落木萧萧下，不尽长江滚滚来。",
+                "万里悲秋常作客，百年多病独登台。",
+                "艰难苦恨繁霜鬓，潦倒新停浊酒杯。"
+            ],
+            quiz: [
+                { type:"choice", q:"“无边落木萧萧下”写的是什么季节？", options:["春天","秋天","夏天"], answer:1 },
+                { type:"fill", q:"不尽长江滚滚____。", answer:"来" },
+                { type:"choice", q:"这首诗表达了诗人什么心情？", options:["悲伤忧愁","开心快乐","平静淡然"], answer:0 }
+            ]
+        },
+        {
+            title: "逍遥游 · 庄子（节选）",
+            content: [
+                "北冥有鱼，其名为鲲。",
+                "鲲之大，不知其几千里也。",
+                "化而为鸟，其名为鹏。",
+                "鹏之背，不知其几千里也；",
+                "怒而飞，其翼若垂天之云。",
+                "是鸟也，海运则将徙于南冥。"
+            ],
+            quiz: [
+                { type:"fill", q:"北冥有鱼，其名为____。", answer:"鲲" },
+                { type:"choice", q:"鲲变成了什么？", options:["鹏","龙","凤"], answer:0 },
+                { type:"choice", q:"鹏的翅膀像什么？", options:["乌云","垂天之云","彩虹"], answer:1 }
+            ]
+        }
+    ]
+};
+
+// ============================================================
+// 二、字词词典（本地）
+// ============================================================
+const wordDict = {
+    "朗润": {pinyin:"lǎng rùn", explain:"明亮滋润，形容山变得鲜亮湿润", example:"春天来了，山川朗润。"},
+    "欣欣然": {pinyin:"xīn xīn rán", explain:"开心愉悦的样子", example:"他欣欣然出门踏青。"},
+    "赶趟儿": {pinyin:"gǎn tàngr", explain:"赶得上，这里指花儿争相开放", example:"百花赶趟儿一齐盛开。"},
+    "酝酿": {pinyin:"yùn niàng", explain:"慢慢发酵，这里指花香在空气中弥漫", example:"春风里酝酿着花香。"},
+    "软绵绵": {pinyin:"ruǎn mián mián", explain:"柔软柔和", example:"草地上软绵绵的。"},
+    "愠": {pinyin:"yùn", explain:"生气、恼怒", example:"人不知而不愠。"},
+    "罔": {pinyin:"wǎng", explain:"迷惑，没有收获", example:"学而不思则罔。"},
+    "殆": {pinyin:"dài", explain:"疑惑、危险", example:"思而不学则殆。"},
+    "砺": {pinyin:"lì", explain:"磨刀石", example:"金就砺则利。"}
+};
+
+// ============================================================
+// 三、全局状态
+// ============================================================
+let currentStage = "初中";
+let currentArticleIdx = 0;
+let currentArticle = null;
+let customList = { "小学": [], "初中": [], "高中": [] };   // 用户自定义课文
+let speech = new SpeechSynthesisUtterance();
+speech.rate = 1;
+speech.lang = 'zh-CN';
+let readQueue = [];           // 分段朗读队列（iOS 长文本防截断）
+let currentQuizIndex = 0;
+let usedQuizIndexes = [];
+let currentCorrect = 0;
+let currentTotal = 0;
+let orderSelected = [];
+let fontSize = 18;
+let rulerOpen = false;
+
+// 难度状态
+let difficultyLevel = "middle";   // light / middle / heavy（整体读写困难程度）
+let readLevel = "middle";         // light / middle / heavy（阅读难度）
+let quizLevel = "easy";           // easy / middle / hard（答题难度）
+
+// ============================================================
+// 四、页面切换（分类导航）
+// ============================================================
+function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
+    document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    window.scrollTo(0, 0);
+    if (name === 'ai') renderAIWelcome();
+}
+
+// ============================================================
+// 五、课文渲染
+// ============================================================
+function renderLessonPicker() {
+    const picker = document.getElementById('lessonPicker');
+    picker.innerHTML = '';
+    // 学段切换按钮
+    Object.keys(textbook).forEach(stage => {
+        const btn = document.createElement('button');
+        btn.className = 'lesson-btn' + (stage === currentStage ? ' active' : '');
+        btn.innerText = stage;
+        btn.onclick = () => { currentStage = stage; renderLessonPicker(); loadFirstLesson(); };
+        picker.appendChild(btn);
+    });
+    // 分隔线
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:100%; border-top:1px dashed rgba(130,130,130,0.4); margin:8px 0;';
+    picker.appendChild(sep);
+    // 内置课文
+    textbook[currentStage].forEach((art, i) => {
+        const b = document.createElement('button');
+        b.className = 'lesson-btn' + (currentArticle && currentArticle.title === art.title && !currentArticle.isCustom ? ' active' : '');
+        b.innerText = art.title;
+        b.onclick = () => openLesson(i, false);
+        picker.appendChild(b);
+    });
+    // 用户自定义课文（带⭐标记，可删除：桌面右键 / 手机长按）
+    const customs = customList[currentStage] || [];
+    customs.forEach((art, i) => {
+        const b = document.createElement('button');
+        b.className = 'lesson-btn custom' + (currentArticle && currentArticle.title === art.title && currentArticle.isCustom ? ' active' : '');
+        b.innerText = '⭐ ' + art.title;
+        b.onclick = () => openLesson(i, true);
+        // 桌面：右键删除
+        b.oncontextmenu = (e) => { e.preventDefault(); if (confirm('删除这篇自定义课文「' + art.title + '」？')) deleteCustomLesson(i); };
+        // iOS：长按 600ms 删除（长按时震动提示）
+        let pressTimer = null;
+        b.addEventListener('touchstart', function() {
+            pressTimer = setTimeout(function() {
+                if (navigator.vibrate) navigator.vibrate(10);
+                if (confirm('删除这篇自定义课文「' + art.title + '」？')) deleteCustomLesson(i);
+            }, 600);
+        }, { passive: true });
+        b.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+        b.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
+        picker.appendChild(b);
+    });
+    // 提示
+    if (customs.length > 0) {
+        const tip = document.createElement('div');
+        tip.style.cssText = 'width:100%; font-size:12px; color:#887766; margin-top:4px;';
+        tip.innerText = '⭐ 为自定义课文，右键（长按）可删除';
+        picker.appendChild(tip);
+    }
+}
+
+function openLesson(idx, isCustom) {
+    if (isCustom) {
+        currentArticle = customList[currentStage][idx];
+        currentArticle.isCustom = true;
+    } else {
+        currentArticle = textbook[currentStage][idx];
+        currentArticle.isCustom = false;
+    }
+    document.getElementById('articleTitle').innerText = '课文：' + currentArticle.title;
+    currentQuizIndex = 0;
+    usedQuizIndexes = [];
+    currentCorrect = 0;
+    currentTotal = 0;
+    orderSelected = [];
+    renderText();
+    renderQuiz();
+    updateAccuracy();
+    renderLessonPicker();
+}
+
+function loadFirstLesson() {
+    openLesson(0, false);
+}
+
+// ========== 自定义课文（存本地浏览器 localStorage） ==========
+function loadCustomLessons() {
+    try {
+        const data = JSON.parse(localStorage.getItem('customLessons') || '{}');
+        customList = {
+            "小学": data["小学"] || [],
+            "初中": data["初中"] || [],
+            "高中": data["高中"] || []
+        };
+    } catch (e) {
+        customList = { "小学": [], "初中": [], "高中": [] };
+    }
+}
+
+function saveCustomLessons() {
+    localStorage.setItem('customLessons', JSON.stringify(customList));
+}
+
+function toggleAddLesson() {
+    const box = document.getElementById('addLessonBox');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+// 添加自定义课文：自动分句 + 自动生成基础题目
+function addCustomLesson() {
+    const stage = document.getElementById('addStage').value;
+    const title = document.getElementById('addTitle').value.trim();
+    const contentRaw = document.getElementById('addContent').value.trim();
+    const status = document.getElementById('addLessonStatus');
+
+    if (!title || !contentRaw) {
+        status.innerText = '⚠️ 请填写标题和正文';
+        return;
+    }
+    if (title.length > 30) {
+        status.innerText = '⚠️ 标题请控制在30字以内';
+        return;
+    }
+
+    // 自动分句：按标点和换行拆分
+    let sentences = contentRaw
+        .split(/\n+/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .flatMap(line => line.split(/(?<=[。！？；])\s*/).filter(s => s.trim()))
+        .map(s => s.trim());
+
+    if (sentences.length === 0) {
+        status.innerText = '⚠️ 正文内容为空，请检查';
+        return;
+    }
+    if (sentences.length > 60) {
+        sentences = sentences.slice(0, 60);
+        status.innerText = '⚠️ 正文过长，已截取前60句';
+    }
+
+    // 自动生成基础题目（从正文中挖词填空 + 内容理解）
+    const quiz = [];
+    sentences.forEach((sentence, i) => {
+        if (quiz.length >= 3) return;
+        const chars = sentence.replace(/[，。！？；、“”\s]/g, '').split('');
+        if (chars.length >= 4 && chars.length <= 12) {
+            const pos = Math.floor(chars.length / 2);
+            const answer = chars[pos];
+            const qText = sentence.replace(new RegExp('(' + answer + ')'), '____');
+            quiz.push({ type: 'fill', q: qText + '（第' + (i + 1) + '句挖空）', answer: answer });
+        }
+    });
+    quiz.push({
+        type: 'choice',
+        q: '《' + title + '》这篇课文主要写了什么？',
+        options: ['景物或事情的内容', '一种道理', '一个人物'],
+        answer: 0
+    });
+
+    customList[stage].push({ title: title, content: sentences, quiz: quiz });
+    saveCustomLessons();
+    loadCustomLessons();
+    renderLessonPicker();
+    // 打开刚添加的课文
+    openLesson(customList[stage].length - 1, true);
+
+    status.innerText = '✅ 已保存「' + title + '」，共' + sentences.length + '句、' + quiz.length + '道题';
+    document.getElementById('addTitle').value = '';
+    document.getElementById('addContent').value = '';
+}
+
+// 删除自定义课文
+function deleteCustomLesson(idx) {
+    customList[currentStage].splice(idx, 1);
+    saveCustomLessons();
+    loadCustomLessons();
+    renderLessonPicker();
+    loadFirstLesson();
+}
+
+function renderText() {
+    const wrap = document.getElementById('textContainer');
+    wrap.innerHTML = '';
+    // 根据阅读难度决定是否拆分短句
+    const sentences = splitForRead(currentArticle.content);
+    sentences.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'sentence-item';
+        div.innerText = s;
+        div.onclick = () => readSentence(s, div);
+        wrap.appendChild(div);
+    });
+    applyReadMode();
+}
+
+// 阅读难度处理：拆短句
+function splitForRead(lines) {
+    if (readLevel === 'light') {
+        // 轻度：保留原文句子，不做额外拆分
+        return lines;
+    }
+    // 中度/重度：把长句按标点拆成更短的分句
+    const result = [];
+    lines.forEach(line => {
+        const parts = line.split(/(?<=[，。；！？、])/).filter(s => s.trim());
+        if (parts.length === 0) result.push(line);
+        else parts.forEach(p => result.push(p.trim()));
+    });
+    return result;
+}
+
+// 阅读模式视觉切换
+function applyReadMode() {
+    const area = document.getElementById('readingArea');
+    area.classList.remove('reading-mode-heavy');
+    if (readLevel === 'heavy') {
+        area.classList.add('reading-mode-heavy');
+        if (!rulerOpen) toggleRuler(); // 重度自动开启标尺
+    } else {
+        if (rulerOpen) toggleRuler();
+    }
+}
+
+// ========== 朗读功能（iOS 兼容） ==========
+// iOS Safari 需要 webkit 前缀检测 + 中文语音选择 + 分段朗读防截断
+function speechSupported() {
+    return ('speechSynthesis' in window) || ('webkitSpeechSynthesis' in window);
+}
+function getZhVoice() {
+    const synth = window.speechSynthesis || window.webkitSpeechSynthesis;
+    if (!synth) return null;
+    const voices = synth.getVoices();
+    // iOS 上语音列表是异步加载的，首次可能为空
+    if (voices.length === 0) {
+        synth.onvoiceschanged = function() {
+            const v = synth.getVoices().find(v => v.lang && v.lang.toLowerCase().indexOf('zh') === 0);
+            if (v) speech.voice = v;
+        };
+        return null;
+    }
+    return voices.find(v => v.lang && v.lang.toLowerCase().indexOf('zh') === 0) || null;
+}
+
+function readSentence(text, dom) {
+    if (!speechSupported()) { alert('当前浏览器不支持语音朗读'); return; }
+    const synth = window.speechSynthesis || window.webkitSpeechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    u.rate = speech.rate;
+    const v = getZhVoice(); if (v) u.voice = v;
+    document.querySelectorAll('.sentence-item').forEach(s => s.classList.remove('active-read'));
+    if (dom) dom.classList.add('active-read');
+    synth.speak(u);
+}
+
+// 分段朗读全文：iOS 会把长文本截断，这里按句逐段朗读
+function readAll() {
+    if (!speechSupported()) { alert('当前浏览器不支持语音朗读'); return; }
+    const synth = window.speechSynthesis || window.webkitSpeechSynthesis;
+    synth.cancel();
+    const sentences = splitForRead(currentArticle.content);
+    readQueue = sentences.slice();
+    speakNextSegment();
+}
+
+function speakNextSegment() {
+    const synth = window.speechSynthesis || window.webkitSpeechSynthesis;
+    if (!synth || readQueue.length === 0) return;
+    const seg = readQueue.shift();
+    const u = new SpeechSynthesisUtterance(seg);
+    u.lang = 'zh-CN';
+    u.rate = speech.rate;
+    const v = getZhVoice(); if (v) u.voice = v;
+    u.onend = function() { speakNextSegment(); };
+    u.onerror = function() { /* iOS 上可能报 interrupted，忽略继续 */ };
+    synth.speak(u);
+}
+
+// ============================================================
+// 七、练习系统（按答题难度分级）
+// ============================================================
+function randomQuiz() {
+    const total = currentArticle.quiz.length;
+    if (usedQuizIndexes.length >= total) usedQuizIndexes = [];
+    let randomIdx;
+    do { randomIdx = Math.floor(Math.random() * total); } while (usedQuizIndexes.includes(randomIdx));
+    usedQuizIndexes.push(randomIdx);
+    currentQuizIndex = randomIdx;
+    orderSelected = [];
+    renderQuiz();
+}
+
+function renderQuiz() {
+    const quiz = currentArticle.quiz[currentQuizIndex];
+    const box = document.getElementById('quizBox');
+    const typeDom = document.getElementById('quizType');
+    document.getElementById('quizFeedback').innerText = '';
+
+    const typeMap = { choice:'📝 选择题', fill:'✏️ 填空题', order:'🔢 排序题' };
+    typeDom.innerText = typeMap[quiz.type] || '练习题';
+
+    if (quiz.type === 'choice') {
+        box.innerHTML = `<div style="margin-bottom:10px;">${quiz.q}</div>`;
+        // 简单难度：3选项+答错提示；中等/困难：全选项
+        let opts = quiz.options;
+        const prefix = quizLevel === 'easy' ? '选项较少，慢慢选：' : '请选择答案：';
+        box.innerHTML = `<div style="font-size:14px;color:#887766;margin-bottom:4px;">${prefix}</div>${box.innerHTML}`;
+        opts.forEach((opt, i) => {
+            box.innerHTML += `<button class="option-btn" onclick="checkChoice(${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+        });
+    } else if (quiz.type === 'fill') {
+        // 困难难度：无提示填空；简单/中等：给出首字提示
+        const hint = quizLevel === 'hard' ? '' : `（提示：答案第一个字是「${quiz.answer.charAt(0)}」）`;
+        box.innerHTML = `
+            <div style="margin-bottom:10px;">${quiz.q.replace('____', '<input type="text" class="fill-blank" id="fillInput" placeholder="填写答案">')}</div>
+            <div style="font-size:14px;color:#887766;margin-bottom:6px;">${hint}</div>
+            <button onclick="checkFill()">提交答案</button>
+        `;
+    }
+}
+
+function checkChoice(selectIdx) {
+    const quiz = currentArticle.quiz[currentQuizIndex];
+    const feedback = document.getElementById('quizFeedback');
+    currentTotal++;
+    if (selectIdx === quiz.answer) {
+        currentCorrect++;
+        feedback.innerText = '🎉 答对啦！真棒！';
+        feedback.style.color = '#228822';
+    } else {
+        feedback.innerText = '😊 没关系，正确答案是：' + quiz.options[quiz.answer];
+        feedback.style.color = '#bb4444';
+        // 简单难度：答错给额外提示
+        if (quizLevel === 'easy') {
+            feedback.innerHTML += '<div class="hint-box">💡 提示：回到课文里找找答案哦，把相关句子再读一遍。</div>';
+        }
+    }
+    updateAccuracy();
+    saveStat();
+}
+
+function checkFill() {
+    const quiz = currentArticle.quiz[currentQuizIndex];
+    const input = document.getElementById('fillInput').value.trim();
+    const feedback = document.getElementById('quizFeedback');
+    currentTotal++;
+    if (input === quiz.answer) {
+        currentCorrect++;
+        feedback.innerText = '🎉 答对啦！';
+        feedback.style.color = '#228822';
+    } else {
+        feedback.innerText = '😊 差一点点，正确答案是：' + quiz.answer;
+        feedback.style.color = '#bb4444';
+        if (quizLevel !== 'hard') {
+            feedback.innerHTML += '<div class="hint-box">💡 提示：把课文里含有这个空的那句话读一遍。</div>';
+        }
+    }
+    updateAccuracy();
+    saveStat();
+}
+
+function nextQuestion() { randomQuiz(); }
+
+function updateAccuracy() {
+    const rate = currentTotal > 0 ? Math.round(currentCorrect / currentTotal * 100) : 0;
+    document.getElementById('currentAcc').innerText = rate + '%';
+}
+
+// ============================================================
+// 八、AI 答疑（自行接入 OpenAI 兼容 API）
+// ============================================================
+function getAIConfig() {
+    return {
+        baseUrl: document.getElementById('aiBaseUrl').value.trim(),
+        apiKey: document.getElementById('aiApiKey').value.trim(),
+        model: document.getElementById('aiModel').value.trim()
+    };
+}
+function saveAIConfig() {
+    const cfg = getAIConfig();
+    localStorage.setItem('aiConfig', JSON.stringify(cfg));
+    document.getElementById('aiConfigStatus').innerText = '✅ AI 配置已保存到本机';
+}
+function loadAIConfig() {
+    try {
+        const cfg = JSON.parse(localStorage.getItem('aiConfig') || '{}');
+        if (cfg.baseUrl) document.getElementById('aiBaseUrl').value = cfg.baseUrl;
+        if (cfg.apiKey) document.getElementById('aiApiKey').value = cfg.apiKey;
+        if (cfg.model) document.getElementById('aiModel').value = cfg.model;
+        return cfg;
+    } catch (e) { return {}; }
+}
+
+// 测试连接
+async function testAIConfig() {
+    const cfg = getAIConfig();
+    const status = document.getElementById('aiConfigStatus');
+    if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+        status.innerText = '⚠️ 请先填写完整的接口地址、Key 和模型名';
+        return;
+    }
+    status.innerText = '⏳ 正在测试连接...';
+    try {
+        const res = await fetch(cfg.baseUrl.replace(/\/$/, '') + '/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + cfg.apiKey
+            },
+            body: JSON.stringify({
+                model: cfg.model,
+                messages: [{ role: 'user', content: '你好，请回复：连接成功' }],
+                max_tokens: 20
+            })
+        });
+        if (!res.ok) {
+            const errText = await res.text();
+            status.innerText = '❌ 连接失败：HTTP ' + res.status + '（' + errText.slice(0, 80) + '）。\n若提示跨域(CORS)问题，请使用支持浏览器跨域的 API 网关或本地代理转发。';
+            return;
+        }
+        const data = await res.json();
+        status.innerText = '✅ 连接成功！模型回复：' + (data.choices && data.choices[0] ? data.choices[0].message.content.slice(0, 30) : '正常');
+    } catch (e) {
+        status.innerText = '❌ 连接失败：' + e.message + '。常见原因：跨域限制(CORS)、接口地址错误。建议使用支持 CORS 的 API 平台或本地代理。';
+    }
+}
+
+// 发送 AI 提问
+function sendAI() {
+    const input = document.getElementById('aiInput');
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = '';
+    askAI(q);
+}
+
+function askAI(question) {
+    const box = document.getElementById('aiChatBox');
+    // 显示用户问题
+    box.innerHTML += `<div class="chat-msg user">${escapeHtml(question)}</div>`;
+    const loading = document.createElement('div');
+    loading.className = 'chat-msg ai ai-loading';
+    loading.innerText = '思考中...';
+    box.appendChild(loading);
+    box.scrollTop = box.scrollHeight;
+
+    const cfg = getAIConfig();
+    const systemPrompt = buildSystemPrompt();
+    const context = '当前课文是《' + currentArticle.title + '》。\n课文内容：\n' + currentArticle.content.join('\n') + '\n';
+
+    if (cfg.baseUrl && cfg.apiKey && cfg.model) {
+        // 有配置：调用真实 API
+        fetch(cfg.baseUrl.replace(/\/$/, '') + '/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + cfg.apiKey
+            },
+            body: JSON.stringify({
+                model: cfg.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: context + '\n学生的问题：' + question }
+                ],
+                temperature: 0.7,
+                max_tokens: 600
+            })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(data => {
+            loading.remove();
+            const answer = data.choices && data.choices[0] ? data.choices[0].message.content : '（无返回内容）';
+            box.innerHTML += `<div class="chat-msg ai">${escapeHtml(answer)}</div>`;
+            box.scrollTop = box.scrollHeight;
+        })
+        .catch(err => {
+            loading.remove();
+            box.innerHTML += `<div class="chat-msg ai">⚠️ 调用失败：${escapeHtml(err.message)}。请检查「设置」里的 AI 配置；若为跨域(CORS)限制，请使用支持 CORS 的接口或本地代理。现在改用离线答疑：<br>${offlineAnswer(question)}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+    } else {
+        // 未配置：离线答疑降级
+        loading.remove();
+        box.innerHTML += `<div class="chat-msg ai">${offlineAnswer(question)}<br><br><span style="font-size:13px;color:#887766;">（提示：你还没有配置 AI 接口，当前是内置离线答疑。到「设置」填入你的 API 后可获得更完整的回答。）</span></div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+// 离线答疑（基于本地词典与课文规则）
+function offlineAnswer(question) {
+    // 1. 词义查询
+    for (const word in wordDict) {
+        if (question.includes(word)) {
+            const d = wordDict[word];
+            return `「${word}」${d.pinyin}：${d.explain}。\n例句：${d.example}`;
+        }
+    }
+    // 2. 课文相关
+    if (question.includes('讲什么') || question.includes('主要内容')) {
+        return `这篇《${currentArticle.title}》我们这样理解：\n` + currentArticle.content.slice(0, 3).map((s, i) => `第${i+1}句：${s}`).join('\n') + `\n\n先读熟每一句，再连起来理解，会容易很多哦。`;
+    }
+    if (question.includes('字词') || question.includes('难')) {
+        return `课文里可以重点认这些字词：${Object.keys(wordDict).join('、')}。\n选中课文里的字词，会自动弹出解释哦。`;
+    }
+    // 3. 兜底
+    return '这个问题我需要想一想。建议你先在「设置」里配置 AI 接口（支持 OpenAI 兼容 API），我就能用大模型详细解答你的问题啦。现在可以先选中课文里的字词查看释义，或点击上方快捷按钮提问。';
+}
+
+// 构建 AI 系统提示词（人格 + 难度适配）
+function buildSystemPrompt() {
+    const readDesc = { light:'轻度：可用正常语速和句式。', middle:'中度：使用短句，一次只说一个意思，少用复杂词。', heavy:'重度：必须用非常短的句子，每句话不超过10个字，多重复重点，语气温和鼓励。' };
+    const quizDesc = { easy:'学生答题水平简单，讲解要非常浅显。', middle:'学生答题水平中等，可适当展开。', hard:'学生答题水平较好，可以讲解得完整一些。' };
+    return `你是「读写障碍学习智能体」的AI答疑老师，服务对象是有阅读困难的中小学生。
+规则：
+1. 语气温和、耐心、鼓励，绝不说批评的话。
+2. 回答要用简单、短小的句子，根据学生困难程度调整：${readDesc[readLevel]}
+3. 答题难度参考：${quizDesc[quizLevel]}
+4. 结合学生正在学的课文内容来回答。
+5. 你只提供学习辅助，不做任何医学诊断。`;
+}
+
+function renderAIWelcome() {
+    const box = document.getElementById('aiChatBox');
+    if (box.children.length === 0) {
+        box.innerHTML = `<div class="chat-msg ai">你好呀！我是你的 AI 答疑小老师。\n有看不懂的句子、不认识的词，都可以问我，我会用简单的话讲给你听～</div>`;
+    }
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+// ============================================================
+// 九、难度分级应用
+// ============================================================
+function applyDifficulty() {
+    difficultyLevel = document.getElementById('diffLevel').value;
+    // 整体难度映射到阅读 + 答题
+    const map = {
+        light:   { read:'light', quiz:'easy' },
+        middle:  { read:'middle', quiz:'easy' },
+        heavy:   { read:'heavy', quiz:'middle' }
+    };
+    readLevel = map[difficultyLevel].read;
+    quizLevel = map[difficultyLevel].quiz;
+    document.getElementById('readLevel').value = readLevel;
+    document.getElementById('quizLevel').value = quizLevel;
+
+    const descMap = {
+        light: '轻度：标准排版，正常字号，答题给少量提示',
+        middle: '中度：自动拆分短句、放大字号，答题提供提示',
+        heavy: '重度：单句大字显示、自动开启阅读标尺，答题降低难度'
+    };
+    document.getElementById('diffDesc').innerText = descMap[difficultyLevel];
+    applyReadLevel();
+    applyQuizLevel();
+    refreshRecordStats();
+}
+
+function applyReadLevel() {
+    readLevel = document.getElementById('readLevel').value;
+    if (currentArticle) renderText();
+}
+
+function applyQuizLevel() {
+    quizLevel = document.getElementById('quizLevel').value;
+    if (currentArticle) renderQuiz();
+    refreshRecordStats();
+}
+
+// ============================================================
+// 十、界面控制（主题/字号/语速/标尺/极简）
+// ============================================================
+function setTheme(cls) { document.body.className = cls; }
+
+function fontSizeChange(delta) {
+    fontSize += delta;
+    fontSize = Math.max(14, Math.min(36, fontSize));
+    document.body.style.fontSize = fontSize + 'px';
+}
+
+function speedUp() { speech.rate = Math.min(2, speech.rate + 0.1); }
+function speedDown() { speech.rate = Math.max(0.5, speech.rate - 0.1); }
+
+function toggleRuler() {
+    rulerOpen = !rulerOpen;
+    const rulerDom = document.getElementById('ruler');
+    if (rulerOpen) {
+        rulerDom.classList.add('show');
+        document.addEventListener('mousemove', moveRuler);
+        document.addEventListener('touchmove', touchMoveRuler, { passive: true });
+    } else {
+        rulerDom.classList.remove('show');
+        document.removeEventListener('mousemove', moveRuler);
+        document.removeEventListener('touchmove', touchMoveRuler);
+    }
+}
+function moveRuler(e) { document.getElementById('ruler').style.top = (e.clientY - 20) + 'px'; }
+function touchMoveRuler(e) { if (e.touches[0]) document.getElementById('ruler').style.top = (e.touches[0].clientY - 20) + 'px'; }
+
+function toggleSimple() { document.body.classList.toggle('simple-mode'); }
+
+// ============================================================
+// 十一、学习记录（localStorage）
+// ============================================================
+function saveStat() {
+    const data = JSON.parse(localStorage.getItem('readAgentStat') || '{}');
+    data.correct = (data.correct || 0);
+    data.total = (data.total || 0) + 1;
+    localStorage.setItem('readAgentStat', JSON.stringify(data));
+    refreshRecordStats();
+}
+function refreshRecordStats() {
+    const data = JSON.parse(localStorage.getItem('readAgentStat') || '{}');
+    const total = data.total || 0;
+    const correct = data.correct || 0;
+    const rate = total > 0 ? Math.round(correct / total * 100) : 0;
+    document.getElementById('statTotal').innerText = total + ' 道';
+    document.getElementById('statCorrect').innerText = correct + ' 道';
+    document.getElementById('statRate').innerText = rate + '%';
+    document.getElementById('statReadLevel').innerText = { light:'轻度', middle:'中度', heavy:'重度' }[readLevel];
+    document.getElementById('statQuizLevel').innerText = { easy:'简单', middle:'中等', hard:'困难' }[quizLevel];
+}
+function resetStudy() {
+    localStorage.removeItem('readAgentStat');
+    refreshRecordStats();
+}
+
+// ============================================================
+// 十二、字词释义弹窗
+// ============================================================
+document.addEventListener('mouseup', function(e) {
+    const sel = window.getSelection().toString().trim();
+    if (wordDict[sel]) {
+        const info = wordDict[sel];
+        const pop = document.getElementById('wordPopup');
+        pop.innerHTML = `<strong>${sel}</strong>【${info.pinyin}】<p>${info.explain}</p><small>例句：${info.example}</small>`;
+        pop.style.left = e.pageX + 'px';
+        pop.style.top = e.pageY + 'px';
+        pop.classList.add('show');
+        setTimeout(() => pop.classList.remove('show'), 3000);
+    }
+});
+
+// ============================================================
+// 十三、初始化
+// ============================================================
+window.onload = function() {
+    loadAIConfig();
+    loadCustomLessons();
+    renderLessonPicker();
+    loadFirstLesson();
+    // 初始化难度设置界面
+    applyDifficulty();
+    renderAIWelcome();
+    // 预加载中文语音（iOS Safari 语音列表异步加载）
+    if (speechSupported()) getZhVoice();
+};
+</script>
+</body>
+</html>
